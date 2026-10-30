@@ -197,6 +197,7 @@ async function connect(){
     if(p.ok&&p.r)$("kProject").textContent=(p.r.name||"")+(p.r.id?" ("+p.r.id+")":"");
     showLang(await run("user.getUserSettings",[]));
     await run("ui.setMenu",[MENU]);
+    await run("extension.setStatusMessage",["SBD ScanTrack Diagnostics ready"]);
   }catch(e){
     API=null;setBadge("err","Connection failed");log("err","Connection failed: "+(e&&e.message||e));
   }finally{$("btnConnect").disabled=false}
