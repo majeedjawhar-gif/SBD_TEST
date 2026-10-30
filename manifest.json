@@ -1,7 +1,7 @@
 {
-  "url": "https://majeedjawhar-gif.github.io/index.html",
+  "url": "https://majeedjawhar-gif.github.io/SBD_TEST/index.html",
   "title": "SBD ScanTrack - Workspace API Diagnostics",
-  "icon": "https://majeedjawhar-gif.github.io/image.svg",
+  "icon": "https://majeedjawhar-gif.github.io/SBD_TEST/image.svg",
   "description": "Diagnostic console for verifying Trimble Connect Workspace API integration (project, user, UI, extension, 3D viewer and embed modules).",
   "configCommand": "sbd_open_config",
   "extensionType": ["project", "3dviewer"]
