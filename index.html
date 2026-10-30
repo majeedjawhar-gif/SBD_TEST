@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBD ScanTrack - Workspace API Diagnostics</title>
+<link rel="icon" href="image.svg" type="image/svg+xml">
+<style>
+:root{--bg:#F4F2EC;--panel:#FFFFFF;--ink:#22303A;--muted:#6B7780;--line:#D9D5C8;--navy:#1F3A4D;--sage:#6F8B70;--khaki:#B79F5A;--ok:#4F7A5A;--err:#9A4A3F;--warn:#A9822F}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--navy);color:#EDE8D8;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header img{width:34px;height:34px}
+header h1{font-size:17px;margin:0;font-weight:600}
+header small{color:#B9C4CB;display:block;font-weight:400}
+.badge{margin-left:auto;padding:4px 12px;border-radius:12px;font-size:12px;background:#33505F}
+.badge.ok{background:var(--ok)}.badge.err{background:var(--err)}.badge.wait{background:var(--warn)}
+main{max-width:1200px;margin:0 auto;padding:16px;display:grid;gap:16px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);border-bottom:2px solid var(--khaki);padding-bottom:6px}
+.row{display:grid;grid-template-columns:150px minmax(120px,1fr) minmax(120px,1.2fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #EEEBE0}
+.row code{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.grp{margin:12px 0 2px;font-weight:600;color:var(--sage)}
+input,select,textarea{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:4px;width:100%;min-width:0;background:#FCFBF8;color:var(--ink)}
+textarea{font-family:Consolas,monospace;font-size:12px;resize:vertical}
+button{font:inherit;padding:6px 12px;border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:4px;cursor:pointer}
+button.sec{background:#fff;color:var(--navy)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 10px;font-size:13px}
+.kv b{color:var(--muted);font-weight:500}
+#log{height:320px;overflow:auto;background:#1B2830;color:#DDE3E6;font:12px/1.5 Consolas,monospace;padding:8px;border-radius:4px}
+#log div{border-bottom:1px solid #2B3B45;padding:3px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.t-ok{color:#9CCB9F}.t-err{color:#E39A8F}.t-evt{color:#E3CB8A}.t-inf{color:#9DB8C8}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #EEEBE0}
+th{background:#EFEBDD;color:var(--navy)}
+.pass{color:var(--ok);font-weight:600}.fail{color:var(--err);font-weight:600}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+@media(max-width:720px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <img src="image.svg" alt="">
+  <h1>SBD ScanTrack<small>Trimble Connect Workspace API Diagnostics Console</small></h1>
+  <span id="badge" class="badge wait">Not connected</span>
+</header>
+<main>
+<div class="two">
+  <section id="s-conn">
+    <h2>Connection</h2>
+    <div class="bar">
+      <button id="btnConnect">Connect</button>
+      <button id="btnDiscover" class="sec" disabled>Discover API Surface</button>
+      <button id="btnAll" class="sec" disabled>Run Read-Only Test Suite</button>
+    </div>
+    <div class="kv" id="env"></div>
+  </section>
+  <section id="s-session">
+    <h2>Session Context</h2>
+    <div class="kv">
+      <b>Project</b><span id="kProject">-</span>
+      <b>User language</b><span id="kLang">-</span>
+      <b>Access token</b><span id="kToken">Not requested</span>
+      <b>Last command</b><span id="kCmd">-</span>
+    </div>
+  </section>
+</div>
+
+<section id="s-actions">
+  <h2>API Method Tests</h2>
+  <p style="margin:0;color:var(--muted)">Edit the JSON argument array where needed, then run. Availability of viewer and embed methods depends on the Connect host and extension type.</p>
+  <div id="actions"></div>
+</section>
+
+<section id="s-custom">
+  <h2>Custom Method Invoker</h2>
+  <div class="row" style="grid-template-columns:160px 1fr auto">
+    <input id="cPath" placeholder="module.method  (e.g. viewer.getModels)">
+    <textarea id="cArgs" rows="2" placeholder='JSON argument array, e.g. [{"modelId":"..."}]'>[]</textarea>
+    <button id="cRun" disabled>Invoke</button>
+  </div>
+</section>
+
+<section id="s-results">
+  <h2>Test Suite Results</h2>
+  <table><thead><tr><th>Method</th><th>Result</th><th>Duration</th><th>Detail</th></tr></thead><tbody id="results"><tr><td colspan="4" style="color:var(--muted)">No test suite run yet.</td></tr></tbody></table>
+</section>
+
+<section id="s-log">
+  <h2>Event &amp; Response Log</h2>
+  <div class="bar">
+    <button class="sec" id="btnClear">Clear</button>
+    <button class="sec" id="btnCopy">Copy as JSON</button>
+    <button class="sec" id="btnDownload">Download Log</button>
+  </div>
+  <div id="log"></div>
+</section>
+</main>
+
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const ROOT=location.href.replace(/[^/]*$/,"");
+let API=null, entries=[];
+
+/* ---------- Catalogue of API methods ---------- */
+const MENU={title:"SBD ScanTrack",icon:ROOT+"image.svg",command:"sbd_menu_root",subMenus:[
+  {title:"API Diagnostics",icon:ROOT+"image.svg",command:"sbd_diag_overview"},
+  {title:"Event Monitor",icon:ROOT+"image.svg",command:"sbd_diag_events"}]};
+const ACTIONS=[
+ {g:"Project",p:"project.getProject",a:[],safe:1},
+ {g:"Project",p:"project.getCurrentProject",a:[],safe:1},
+ {g:"User",p:"user.getUserSettings",a:[],safe:1},
+ {g:"Extension",p:"extension.requestPermission",a:["accesstoken"],safe:1},
+ {g:"Extension",p:"extension.setStatusMessage",a:["SBD ScanTrack diagnostics active"]},
+ {g:"UI",p:"ui.setMenu",a:[MENU]},
+ {g:"UI",p:"ui.setActiveMenuItem",a:["sbd_diag_overview"]},
+ {g:"3D Viewer",p:"viewer.getModels",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.getSelection",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.getCamera",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.getSettings",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.getLayers",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.getSnapshot",a:[],safe:1},
+ {g:"3D Viewer",p:"viewer.setSelection",a:[{},"set"]},
+ {g:"Embed (host mode)",p:"embed.setTokens",a:[{accessToken:"<ACCESS_TOKEN>"}]},
+ {g:"Embed (host mode)",p:"embed.init3DViewer",a:[{projectId:"<PROJECT_ID>"}]},
+ {g:"Embed (host mode)",p:"embed.initFileExplorer",a:[{projectId:"<PROJECT_ID>"}]},
+ {g:"Embed (host mode)",p:"embed.initProjectList",a:[{projectEmbedFeatures:{embedViewMode:"list"}}]}
+];
+
+/* ---------- Logging ---------- */
+function log(type,title,data){
+  const e={time:new Date().toISOString(),type,title,data:data===undefined?undefined:safe(data)};
+  entries.push(e);
+  const d=document.createElement("div");d.className="t-"+type;
+  d.textContent="["+e.time.slice(11,23)+"] "+title+(e.data!==undefined?"\n"+JSON.stringify(e.data,null,2):"");
+  const box=$("log");box.appendChild(d);box.scrollTop=box.scrollHeight;
+}
+function safe(v){try{return JSON.parse(JSON.stringify(v,(k,x)=>typeof x==="string"&&x.length>400?x.slice(0,400)+"...[truncated]":x))}catch(e){return String(v)}}
+
+/* ---------- Invocation ---------- */
+async function invoke(path,args){
+  if(!API) throw new Error("Not connected to Trimble Connect.");
+  const [m,fn]=path.split(".");
+  if(!API[m]) throw new Error("Module '"+m+"' is not exposed by this host.");
+  if(typeof API[m][fn]!=="function") throw new Error("Method '"+path+"' is not available.");
+  return API[m][fn].apply(API[m],args||[]);
+}
+async function run(path,args){
+  const t0=performance.now();
+  log("inf","> "+path,args);
+  try{
+    const r=await invoke(path,args);
+    const ms=Math.round(performance.now()-t0);
+    log("ok","< "+path+" succeeded ("+ms+" ms)",r);
+    return {ok:true,ms,r};
+  }catch(err){
+    const ms=Math.round(performance.now()-t0);
+    log("err","< "+path+" failed ("+ms+" ms): "+(err&&err.message||err));
+    return {ok:false,ms,err:String(err&&err.message||err)};
+  }
+}
+
+/* ---------- Event handling ---------- */
+function onEvent(event,args){
+  log("evt","Event: "+event,args);
+  const data=args&&args.data!==undefined?args.data:args;
+  if(event==="extension.command"){
+    $("kCmd").textContent=typeof data==="string"?data:JSON.stringify(data);
+    if(typeof data==="string"&&data.indexOf("sbd_diag")===0) invoke("ui.setActiveMenuItem",[data]).catch(()=>{});
+    if(data==="sbd_diag_events") $("s-log").scrollIntoView({behavior:"smooth"});
+    if(data==="sbd_diag_overview") window.scrollTo({top:0,behavior:"smooth"});
+  }
+  if(event==="extension.accessToken"){
+    $("kToken").textContent=(typeof data==="string"&&data.length>20)?"Received ("+data.length+" characters)":String(data);
+  }
+  if(event==="extension.userSettingsChanged") run("user.getUserSettings",[]).then(showLang);
+}
+function showLang(res){if(res&&res.ok&&res.r)$("kLang").textContent=res.r.language||JSON.stringify(res.r)}
+
+/* ---------- Connect ---------- */
+function setBadge(cls,txt){const b=$("badge");b.className="badge "+cls;b.textContent=txt}
+function setEnabled(on){["btnDiscover","btnAll","cRun"].forEach(i=>$(i).disabled=!on)}
+async function connect(){
+  const lib=window.TrimbleConnectWorkspace;
+  if(!lib){setBadge("err","Library not loaded");log("err","Workspace API script could not be loaded. Check network access to components.connect.trimble.com.");return}
+  if(window.parent===window){log("inf","This page is not running inside a Trimble Connect frame. Calls will time out unless hosted as an extension.")}
+  setBadge("wait","Connecting...");$("btnConnect").disabled=true;
+  try{
+    API=await lib.connect(window.parent,onEvent,30000);
+    setBadge("ok","Connected");setEnabled(true);log("ok","Workspace API connection established.");
+    const p=await run("project.getProject",[]);
+    if(p.ok&&p.r)$("kProject").textContent=(p.r.name||"")+(p.r.id?" ("+p.r.id+")":"");
+    showLang(await run("user.getUserSettings",[]));
+    await run("ui.setMenu",[MENU]);
+  }catch(e){
+    API=null;setBadge("err","Connection failed");log("err","Connection failed: "+(e&&e.message||e));
+  }finally{$("btnConnect").disabled=false}
+}
+
+/* ---------- UI construction ---------- */
+function buildActions(){
+  const host=$("actions");let last="";
+  ACTIONS.forEach((a,i)=>{
+    if(a.g!==last){const h=document.createElement("div");h.className="grp";h.textContent=a.g;host.appendChild(h);last=a.g}
+    const r=document.createElement("div");r.className="row";
+    r.innerHTML='<span></span><code></code><input aria-label="Arguments"><button>Run</button>';
+    r.children[0].textContent=a.p.split(".")[1];
+    r.children[1].textContent=a.p;
+    r.children[2].value=JSON.stringify(a.a);
+    r.children[3].onclick=async()=>{
+      let args;try{args=JSON.parse(r.children[2].value)}catch(e){log("err","Invalid JSON arguments for "+a.p);return}
+      const res=await run(a.p,args);
+      if(a.p==="extension.requestPermission"&&res.ok)$("kToken").textContent=typeof res.r==="string"&&res.r.length>20?"Granted ("+res.r.length+" characters)":String(res.r);
+    };
+    host.appendChild(r);
+  });
+}
+function renderEnv(){
+  const rows=[["Page origin",location.origin],["Framed by host",window.parent!==window?"Yes":"No"],["Library",window.TrimbleConnectWorkspace?"Loaded":"Not loaded"],["User agent",navigator.userAgent.slice(0,70)+"..."]];
+  $("env").innerHTML="";
+  rows.forEach(([k,v])=>{const b=document.createElement("b");b.textContent=k;const s=document.createElement("span");s.textContent=v;$("env").append(b,s)});
+}
+function discover(){
+  if(!API)return;
+  const out={};
+  Object.keys(API).forEach(m=>{
+    const o=API[m];if(!o||typeof o!=="object")return;
+    const names=new Set(Object.keys(o));
+    let proto=Object.getPrototypeOf(o);
+    while(proto&&proto!==Object.prototype){Object.getOwnPropertyNames(proto).forEach(n=>n!=="constructor"&&names.add(n));proto=Object.getPrototypeOf(proto)}
+    out[m]=[...names].filter(n=>typeof o[n]==="function").sort();
+  });
+  log("inf","API surface exposed by this host",out);
+}
+async function suite(){
+  const tb=$("results");tb.innerHTML="";
+  let pass=0,total=0;
+  for(const a of ACTIONS.filter(x=>x.safe)){
+    total++;const res=await run(a.p,a.a);
+    if(res.ok)pass++;
+    const tr=document.createElement("tr");
+    const detail=res.ok?(res.r===undefined?"No data returned":String(JSON.stringify(res.r)).slice(0,90)):res.err;
+    [a.p,res.ok?"PASS":"FAIL",res.ms+" ms",detail].forEach((t,i)=>{const td=document.createElement("td");td.textContent=t;if(i===1)td.className=res.ok?"pass":"fail";tr.appendChild(td)});
+    tb.appendChild(tr);
+  }
+  log(pass===total?"ok":"inf","Read-only test suite complete: "+pass+" of "+total+" passed.");
+}
+
+/* ---------- Wiring ---------- */
+$("btnConnect").onclick=connect;
+$("btnDiscover").onclick=discover;
+$("btnAll").onclick=suite;
+$("cRun").onclick=()=>{
+  let args;try{args=JSON.parse($("cArgs").value||"[]")}catch(e){log("err","Invalid JSON arguments.");return}
+  if(!Array.isArray(args))args=[args];
+  run($("cPath").value.trim(),args);
+};
+$("btnClear").onclick=()=>{entries=[];$("log").innerHTML=""};
+$("btnCopy").onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(entries,null,2)).then(()=>log("inf","Log copied to clipboard."),()=>log("err","Clipboard access was denied."));
+$("btnDownload").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(entries,null,2)],{type:"application/json"}));
+  a.download="sbd-scantrack-api-log-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".json";
+  a.click();URL.revokeObjectURL(a.href);
+};
+buildActions();renderEnv();
+connect();
+})();
+</script>
+</body>
+</html>

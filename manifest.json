@@ -1,0 +1,8 @@
+{
+  "url": "https://YOUR-HOST/index.html",
+  "title": "SBD ScanTrack - Workspace API Diagnostics",
+  "icon": "https://YOUR-HOST/image.svg",
+  "description": "Diagnostic console for verifying Trimble Connect Workspace API integration (project, user, UI, extension, 3D viewer and embed modules).",
+  "configCommand": "sbd_open_config",
+  "extensionType": ["project", "3dviewer"]
+}
